@@ -13,6 +13,7 @@ Features:
 - Tracks first usage of acronyms to expand them fully (e.g., "Long Name (SHORT)")
 - Subsequent uses are replaced with just the short form
 - Supports various acronym command variants for full control
+- Replaces \\printacronyms command with a formatted list of all used acronyms
 
 Supported Commands:
 -------------------
@@ -35,6 +36,11 @@ Supported Commands:
     \\Acs{key}  - Capitalized short form
     \\acsp{key} - Short plural form
     \\Acsp{key} - Capitalized short plural form
+
+    \\printacronyms[include=abbrev, heading=none]
+                - Replaced with a formatted list of all acronyms used in the document,
+                  sorted alphabetically by short form. Each entry is formatted as:
+                  "\\textbf{SHORT}, Long Form"
 
 Acronym File Format:
 --------------------
@@ -120,7 +126,7 @@ def read_acronyms(file_path) -> dict:
     return acronyms
 
 
-def replace_acronyms(text, acronyms) -> str:
+def replace_acronyms(text, acronyms) -> tuple[str, set]:
     """
     Replaces LaTeX-style acronym commands in a text with their definitions.
 
@@ -166,7 +172,9 @@ def replace_acronyms(text, acronyms) -> str:
             }
 
     Returns:
-        str: The processed text with all recognized acronym commands replaced.
+        tuple[str, set]: A tuple containing:
+            - The processed text with all recognized acronym commands replaced.
+            - A set of acronym keys that were used (seen) in the text.
     """
 
     def check_capital(command, text) -> str:
@@ -264,7 +272,36 @@ def replace_acronyms(text, acronyms) -> str:
     # Add any remaining text
     result.append(text[last_end:])
 
-    return "".join(result)
+    return "".join(result), seen_acronyms
+
+
+def generate_acronym_list(seen_acronyms: set, acronyms: dict) -> str:
+    """
+    Generate a formatted list of used acronyms.
+
+    Args:
+        seen_acronyms (set): Set of acronym keys that were used in the text.
+        acronyms (dict): Dictionary mapping acronym keys to their definitions.
+
+    Returns:
+        str: A formatted string listing all used acronyms, sorted alphabetically
+            by their short form.
+    """
+    if not seen_acronyms:
+        return ""
+
+    # Sort alphabetically by short form
+    used = sorted(
+        [(acronyms[key]["short"], acronyms[key]["long"]) for key in seen_acronyms],
+        key=lambda x: x[0].lower(),
+    )
+
+    # Format as a list
+    lines = []
+    for short, long in used:
+        lines.append(f"\\textbf{{{short}}}, {long}")
+
+    return "\n\n".join(lines)
 
 
 def main():
@@ -308,7 +345,13 @@ Examples:
         text = f.read()
 
     # Process acronyms
-    processed_text = replace_acronyms(text, acronyms)
+    processed_text, seen_acronyms = replace_acronyms(text, acronyms)
+
+    # Generate the acronym list and replace \printacronyms
+    acronym_list = generate_acronym_list(seen_acronyms, acronyms)
+    processed_text = processed_text.replace(
+        r"\printacronyms[include=abbrev, heading=none]", acronym_list
+    )
 
     # Write output
     with open(args.output, "w") as f:
