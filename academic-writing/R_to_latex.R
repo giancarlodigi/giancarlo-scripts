@@ -8,33 +8,50 @@
 #' with LaTeX math equivalents for better formatting.
 #'
 #' @param tbl A {gt} table object (class `"gt_tbl"`).
+#' @param start_pos Optional integer line index to specify where to start the
+#'  extraction of table body rows. If `NULL` (default), extraction starts just
+#'  after the first `\midrule` line.
 #'
 #' @return A length-1 character string that can be used as the body of a LaTeX
 #' table.
 #'
-convert_gt_to_latex <- function(tbl) {
+convert_gt_to_latex <- function(tbl, start_pos = NULL) {
   # Check if the table is a gt object
   if (class(tbl)[1] != "gt_tbl") {
     stop("Input must be a gt table.")
   }
 
-  tbl |>
+  # Convert the gt table to LaTeX and extract the relevant lines ---------------
+  latex_lines <- tbl |>
     gt::as_latex() |>
     as.character() |>
+    stringr::str_split("\n")
 
-    # Get the table contents between \toprule and \bottomrule
-    stringr::str_extract(
-      "(?s)(?<=\\\\midrule\\n)(.*?)(?=\\s\\n\\\\bottomrule)"
-    ) |>
+  # If start_pos is provided, extract lines from that position onward
+  if (is.null(start_pos)) {
+    start_idx <- which(stringr::str_detect(latex_lines[[1]], "\\\\midrule"))[1] + 1
+  } else {
+    start_idx <- start_pos
+  }
+
+  # Find the end index (line before \bottomrule)
+  end_idx <- which(stringr::str_detect(latex_lines[[1]], "\\\\bottomrule"))[1] - 1
+
+  # Extract and clean the table content ----------------------------------------
+  table_content <- latex_lines[[1]][start_idx:end_idx] |>
+    paste(collapse = "\n") |>
 
     # Remove any \addlinespace commands
     stringr::str_remove_all("\\\\addlinespace\\[2.5pt\\]") |>
+    stringr::str_remove_all("\\[2.5pt\\]") |>
 
     # Replace comparison operators with LaTeX math equivalents
     stringr::str_replace_all("<=", "$\\leq$") |>
     stringr::str_replace_all(">=", "$\\geq$") |>
     stringr::str_replace_all("<", "$<$") |>
     stringr::str_replace_all(">", "$>$")
+
+  return(table_content)
 }
 
 
