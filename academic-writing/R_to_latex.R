@@ -24,11 +24,11 @@ convert_gt_to_latex <- function(tbl) {
 
     # Get the table contents between \toprule and \bottomrule
     stringr::str_extract(
-      "(?s)(?<=\\\\toprule\\n)(.*?)(?=\\s\\n\\\\bottomrule)"
+      "(?s)(?<=\\\\midrule\\n)(.*?)(?=\\s\\n\\\\bottomrule)"
     ) |>
 
     # Remove any \addlinespace commands
-    stringr::str_remove("\\\\addlinespace\\[2.5pt\\]") |>
+    stringr::str_remove_all("\\\\addlinespace\\[2.5pt\\]") |>
 
     # Replace comparison operators with LaTeX math equivalents
     stringr::str_replace_all("<=", "$\\leq$") |>
