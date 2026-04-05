@@ -136,7 +136,6 @@ def replace_acronyms(text, acronyms) -> tuple[str, set]:
 
         # 1. Force short form: \acs, \acsp
         if "ACS" in cmd_upper:
-            seen_acronyms.add(key)
             return short_form
             
         # 2. Force long form: \acl, \aclp

@@ -39,6 +39,22 @@ class TestConvertAcronyms(unittest.TestCase):
         self.assertIn("Application Programming Interface", processed)
         self.assertIn("API", processed)
 
+    def test_complex_mixed_sequence(self):
+        # Scenario: \acs first (should NOT mark as seen), then \ac (should be FULL), 
+        # then \acfp (forced plural full), then \ac (should be SHORT)
+        text = "Start with \\acs{api}. Now first call: \\ac{api}. Then forced: \\acfp{api}. Final: \\ac{api}."
+        processed, seen = replace_acronyms(text, self.acronyms)
+        
+        # 1. \acs{api} -> "API"
+        # 2. \ac{api} -> "Application Programming Interface (API)" (because \acs didn't mark seen)
+        # 3. \acfp{api} -> "Application Programming Interfaces (APIs)"
+        # 4. \ac{api} -> "API"
+        
+        self.assertIn("Start with API.", processed)
+        self.assertIn("first call: Application Programming Interface (API)", processed)
+        self.assertIn("forced: Application Programming Interfaces (APIs)", processed)
+        self.assertIn("Final: API.", processed)
+
     def test_read_acronyms_flexible(self):
         with tempfile.NamedTemporaryFile(mode='w', suffix='.tex', delete=False) as f:
             f.write("""
