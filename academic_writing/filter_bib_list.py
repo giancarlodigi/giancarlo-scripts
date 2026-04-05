@@ -1,10 +1,11 @@
-"""
+r"""
 BibTeX Citation Filter Script
 =============================
 
 This script filters a BibTeX (.bib) file to include only the references that are
 actually cited in your LaTeX documents. It scans all .tex files in a directory,
-extracts citation keys from \\cite{} commands, and creates a new .bib file
+extracts citation keys from \cite{} commands, and creates a new .bib file
+
 containing only the relevant entries. It's application is for large zotero
 libraries that contain ALL references, but you only want to include those
 that are cited in your LaTeX project.
@@ -44,7 +45,7 @@ from pathlib import Path
 
 
 def extract_citations_from_tex_files(tex_directory="."):
-    """
+    r"""
     Extract all citation keys from LaTeX files in a directory.
 
     This function searches through all .tex files in the specified directory
@@ -78,7 +79,8 @@ def extract_citations_from_tex_files(tex_directory="."):
     for tex_file in tex_files:
         with open(tex_file, "r", encoding="utf-8") as f:
             content = f.read()
-            cite_matches = re.findall(r"\\cite\{([^}]+)\}", content)
+            # Match \cite, \citep, \citet, \citeauthor, \citeyear, etc.
+            cite_matches = re.findall(r"\\cite[a-z]*\*?\{([^}]+)\}", content)
             for match in cite_matches:
                 keys = [key.strip() for key in match.split(",")]
                 citations.update(keys)
@@ -88,39 +90,27 @@ def extract_citations_from_tex_files(tex_directory="."):
 
 def filter_entry_fields(entry_text, excluded_fields):
     """
-    Remove specified fields from a BibTeX entry.
-
-    This function parses a BibTeX entry and removes any fields that match
-    the names specified in the excluded_fields list. The comparison is
-    case-insensitive.
-
-    Args:
-      entry_text (str): The complete BibTeX entry as a string, including
-        newlines and formatting.
-      excluded_fields (list): A list of field names (strings) to be removed
-        from the BibTeX entry. Field names are matched case-insensitively.
-
-    Returns:
-      str: The filtered BibTeX entry with specified fields removed,
-        maintaining the original formatting and line structure.
-
-    Example:
-      >>> entry = "@article{key,\n  title={Sample},\n  author={John Doe},\n  year={2023}\n}"
-      >>> excluded = ["author"]
-      >>> filter_entry_fields(entry, excluded)
-      "@article{key,\n  title={Sample},\n  year={2023}\n}"
+    Remove specified fields from a BibTeX entry, including multi-line fields.
     """
     lines = entry_text.split("\n")
     filtered_lines = []
+    
+    excluded_lower = [f.lower() for f in excluded_fields]
+    skipping = False
 
     for line in lines:
-        # Check if line contains a field definition
-        field_match = re.match(r"\s*(\w+)\s*=", line)
+        # Check if line contains a field definition (e.g., "  author = {...")
+        field_match = re.match(r"^\s*(\w+)\s*=", line)
         if field_match:
             field_name = field_match.group(1).lower()
-            if field_name in [f.lower() for f in excluded_fields]:
-                continue  # Skip this field
-        filtered_lines.append(line)
+            if field_name in excluded_lower:
+                skipping = True
+                continue
+            else:
+                skipping = False
+        
+        if not skipping:
+            filtered_lines.append(line)
 
     return "\n".join(filtered_lines)
 
