@@ -82,8 +82,10 @@ def read_acronyms(file_path) -> dict:
 
     # Find each \DeclareAcronym block
     # We look for \DeclareAcronym{key}{body} where body ends with a } on its own line or followed by whitespace
-    block_pattern = re.compile(r"\\DeclareAcronym\{([^}]+)\}\s*\{(.*?)\n\}", re.DOTALL)
-    
+    block_pattern = re.compile(
+        r"\\DeclareAcronym\{([^}]+)\}\s*\{(.*?)\r?\n\s*\}", re.DOTALL
+    )
+
     # Patterns for fields within a block
     short_pattern = re.compile(r"short\s*=\s*\{([^}]+)\}")
     long_pattern = re.compile(r"long\s*=\s*\{([^}]+)\}")
@@ -92,14 +94,14 @@ def read_acronyms(file_path) -> dict:
     for match in block_pattern.finditer(content):
         key = match.group(1).strip()
         body = match.group(2)
-        
+
         short_match = short_pattern.search(body)
         long_match = long_pattern.search(body)
-        
+
         if short_match and long_match:
             acronyms[key] = {
                 "short": short_match.group(1).strip(),
-                "long": long_match.group(1).strip()
+                "long": long_match.group(1).strip(),
             }
 
     return acronyms
@@ -119,34 +121,35 @@ def replace_acronyms(text, acronyms) -> tuple[str, set]:
         short = acronyms[key]["short"]
         long = acronyms[key]["long"]
         cmd_upper = command.upper()
-        
+
         is_plural = cmd_upper.endswith("P")
         is_caps = command[0].isupper()
-        
+
         s_suffix = "s" if is_plural else ""
-        
+
         # Determine base forms
         short_form = f"{short}{s_suffix}"
         long_form = f"{long}{s_suffix}"
         if is_caps:
             long_form = capitalize_first(long_form)
             short_form = capitalize_first(short_form)
-            
+
         full_form = f"{long_form} ({short_form})"
 
         # 1. Force short form: \acs, \acsp
         if "ACS" in cmd_upper:
+            seen_acronyms.add(key)
             return short_form
-            
+
         # 2. Force long form: \acl, \aclp
         if "ACL" in cmd_upper:
             return long_form
-            
+
         # 3. Force full form: \acf, \acfp
         if "ACF" in cmd_upper:
             seen_acronyms.add(key)
             return full_form
-            
+
         # 4. Standard: \ac, \acp
         if key not in seen_acronyms:
             seen_acronyms.add(key)
@@ -156,9 +159,9 @@ def replace_acronyms(text, acronyms) -> tuple[str, set]:
 
     # Regex pattern matches LaTeX-like commands like: \acp{...}, \ac{...}, etc.
     pattern = r"\\([aA]c[sfl]?p?)\{([^}]+)\}"
-    
+
     seen_acronyms = set()
-    
+
     def re_replace(match):
         command = match.group(1)
         key = match.group(2)

@@ -1,1 +1,1 @@
-# Make academic-writing a package
+# Make academic_writing a package
